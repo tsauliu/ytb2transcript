@@ -5,7 +5,7 @@ import os
 import logging
 import threading
 from funcs import init_csv_file, check_url_exists, add_to_history, get_video_title
-
+import shutil
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -45,6 +45,8 @@ def process_message_async(message):
             
             if result.returncode == 0:
                 add_to_history(message, filename)
+                destpath = os.path.expanduser("~/Dropbox/MyServerFiles/VoiceMemos/Auto_Transcribe/YTBnotes/")
+                shutil.copy2(f"{DOWNLOADS_DIR}/{filename}", destpath)
                 send_to_feishu(f"成功下载音频文件：{filename}，请在服务器的 '{DOWNLOADS_DIR}' 文件夹中查看。")
                 logging.info(f"Successfully downloaded: {filename}")
             else:
