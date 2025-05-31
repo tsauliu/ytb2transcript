@@ -35,18 +35,30 @@ def process_message_async(message):
             
             # 获取视频标题
             video_title = get_video_title(message)
-            filename = f"{video_title}.mp3" if video_title else "音频文件.mp3"
+            if video_title:
+                # 移除特殊字符，只保留中英文、数字、空格和基本标点
+                import re
+                clean_title = re.sub(r'[^\w\s\u4e00-\u9fff.-]', '', video_title)
+                # 限制长度为50个字符
+                clean_title = clean_title[:20].strip()
+                filename = f"{clean_title}.mp3"
+            else:
+                filename = "音频文件.mp3"
             
             send_to_feishu(f"检测到YouTube链接，开始下载: {video_title or message}")
             
-            # 下载音频
-            command = f'yt-dlp -o "{DOWNLOADS_DIR}/%(title)s.%(ext)s" --extract-audio --audio-format mp3 "{message}"'
+            # 下载音频，使用处理后的文件名
+            command = f'yt-dlp -o "{DOWNLOADS_DIR}/{filename}" --extract-audio --audio-format mp3 "{message}"'
             result = subprocess.run(command, shell=True, capture_output=True, text=True, check=False)
             
             if result.returncode == 0:
                 add_to_history(message, filename)
-                destpath = os.path.expanduser("~/Dropbox/MyServerFiles/VoiceMemos/Auto_Transcribe/YTBnotes/")
-                shutil.copy2(f"{DOWNLOADS_DIR}/{filename}", destpath)
+                source_path = os.path.join(os.getcwd(), DOWNLOADS_DIR, filename)
+                destpath = os.path.expanduser(f"~/Dropbox/MyServerFiles/VoiceMemos/Auto_Transcribe/YTBnotes/{filename}")
+                try:
+                    shutil.copy2(source_path, destpath)
+                except Exception as e:
+                    pass
                 send_to_feishu(f"成功下载音频文件：{filename}，请在服务器的 '{DOWNLOADS_DIR}' 文件夹中查看。")
                 logging.info(f"Successfully downloaded: {filename}")
             else:
