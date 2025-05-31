@@ -41,14 +41,29 @@ def download():
     if message:
         # 检查是否为YouTube链接
         if 'youtube.com/' in message or 'youtu.be/' in message:
-            send_to_feishu(f"检测到YouTube链接，开始下载: {message}")
+            # 先获取视频标题
+            try:
+                title_command = f'yt-dlp --get-title "{message}"'
+                title_result = subprocess.run(title_command, shell=True, capture_output=True, text=True, check=False)
+                if title_result.returncode == 0 and title_result.stdout.strip():
+                    video_title = title_result.stdout.strip()
+                    filename = f"{video_title}.mp3"
+                    send_to_feishu(f"检测到YouTube链接，开始下载: {video_title}")
+                else:
+                    filename = "音频文件.mp3"
+                    send_to_feishu(f"检测到YouTube链接，开始下载: {message}")
+            except Exception as e:
+                logging.warning(f"无法获取视频标题: {e}")
+                filename = "音频文件.mp3"
+                send_to_feishu(f"检测到YouTube链接，开始下载: {message}")
+            
             command = f'yt-dlp -o "{DOWNLOADS_DIR}/%(title)s.%(ext)s" --extract-audio --audio-format mp3 "{message}"'
             try:
                 logging.info(f"Attempting to download audio from: {message}")
                 result = subprocess.run(command, shell=True, capture_output=True, text=True, check=False)
                 if result.returncode == 0:
                     logging.info(f"Successfully downloaded audio for: {message}")
-                    send_to_feishu(f"成功下载音频，请在服务器的 '{DOWNLOADS_DIR}' 文件夹中查看。")
+                    send_to_feishu(f"成功下载音频文件：{filename}，请在服务器的 '{DOWNLOADS_DIR}' 文件夹中查看。")
                     return jsonify({"status": "downloaded"})
                 else:
                     logging.error(f"yt-dlp failed for {message}. Stderr: {result.stderr}")
