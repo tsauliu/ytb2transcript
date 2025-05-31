@@ -1,2 +1,5 @@
 *.mp3
 *.md
+*.webm
+__pycache__
+*.csv
